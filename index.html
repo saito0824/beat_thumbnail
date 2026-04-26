@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beat Thumbnail Generator</title>
+<title>Beat Thumbnail Generator — Type Beat用サムネイルを無料で作成</title>
+<meta name="description" content="ヒップホップ / トラップ / Lo-Fi 系ビートのYouTubeサムネイルをブラウザ上で即座に作成・ダウンロード。6つのスタイルプリセット、複数フォント、BPM/KEY表示に対応。完全無料。">
+<meta property="og:title" content="Beat Thumbnail Generator">
+<meta property="og:description" content="Type Beat用のYouTubeサムネイルをブラウザで即座に作成。6スタイル・6フォント・4レイアウト対応。完全無料。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Beat Thumbnail Generator">
+<meta name="twitter:description" content="Type Beat用のYouTubeサムネイルをブラウザで即座に作成。完全無料。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Bebas+Neue&family=Anton&family=Black+Ops+One&family=Rubik+Glitch&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -83,6 +91,10 @@
     .controls { max-height: none; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
     .preview-panel { padding: 20px; }
   }
+
+  .site-footer { padding: 20px 28px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: #444; line-height: 1.7; }
+  .site-footer a { color: #666; text-decoration: underline; }
+  .site-footer .disclaimer { margin-top: 8px; padding: 12px 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; }
 </style>
 </head>
 <body>
@@ -100,8 +112,8 @@
   <div class="controls">
     <div class="section">
       <div class="section-title"><span class="section-bar" id="bar1"></span>テキスト設定</div>
-      <div><label class="label">アーティスト名</label><input class="input" id="artistName" placeholder="例: Travis Scott" value="Travis Scott"></div>
-      <div><label class="label">ビート名</label><input class="input" id="beatName" placeholder="例: MIDNIGHT" value="MIDNIGHT"></div>
+      <div><label class="label">アーティスト名</label><input class="input" id="artistName" placeholder="例: Dark Trap" value="Dark Trap"></div>
+      <div><label class="label">ビート名</label><input class="input" id="beatName" placeholder="例: SHADOW" value="SHADOW"></div>
       <div><label class="label">プロデューサー名（Prod.by）</label><input class="input" id="producerName" placeholder="例: your name" value=""></div>
       <div class="row-2">
         <div><label class="label">BPM</label><input class="input" id="bpm" placeholder="140" value="140"></div>
@@ -176,6 +188,17 @@
   </div>
 </div>
 
+<footer class="site-footer">
+  <div>Beat Thumbnail Generator — Free tool for beat producers</div>
+  <div class="disclaimer">
+    <strong style="color:#666">ご利用にあたって</strong><br>
+    本ツールは無料で提供されており、生成されたサムネイルの利用は自己責任となります。
+    アーティスト名を入力する際は、各アーティストの著作権・肖像権・パブリシティ権にご配慮ください。
+    背景画像をアップロードする場合は、ご自身が利用権を持つ画像をお使いください。
+    本ツールの利用により生じた損害について、制作者は一切の責任を負いません。
+  </div>
+</footer>
+
 <script>
 const PRESETS = [
   { id:"dark-trap", label:"Dark Trap", bg:"linear-gradient(135deg,#0a0a0a 0%,#1a0a1a 40%,#0d0d2b 100%)", accent:"#ff003c", textColor:"#ffffff", overlay:"grain" },
@@ -206,11 +229,11 @@ const LAYOUT_SIZES = {
   diagonal:     { artist:"clamp(14px,3.8vw,34px)", beat:"clamp(26px,7.5vw,68px)" },
 };
 const EXAMPLES = [
-  { artist:"Travis Scott", beat:"MIDNIGHT", preset:"dark-trap", bpm:"140", key:"Cm" },
-  { artist:"Drake", beat:"EMOTIONS", preset:"lofi-chill", bpm:"130", key:"Dm" },
-  { artist:"Playboi Carti", beat:"OPIUM", preset:"neon-street", bpm:"150", key:"F#m" },
-  { artist:"J. Cole", beat:"NOSTALGIA", preset:"vintage-boom", bpm:"90", key:"Eb" },
-  { artist:"Yeat", beat:"TURBO", preset:"phonk", bpm:"160", key:"Am" },
+  { artist:"Dark Trap", beat:"SHADOW", preset:"dark-trap", bpm:"140", key:"Cm" },
+  { artist:"Chill R&B", beat:"EMOTIONS", preset:"lofi-chill", bpm:"130", key:"Dm" },
+  { artist:"Hard Trap", beat:"NEON", preset:"neon-street", bpm:"150", key:"F#m" },
+  { artist:"Boom Bap", beat:"NOSTALGIA", preset:"vintage-boom", bpm:"90", key:"Eb" },
+  { artist:"Phonk", beat:"TURBO", preset:"phonk", bpm:"160", key:"Am" },
 ];
 
 let state = {
