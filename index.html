@@ -14,7 +14,6 @@
 <meta name="twitter:description" content="Type Beat用のYouTubeサムネイルをブラウザで即座に作成。完全無料。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Bebas+Neue&family=Anton&family=Black+Ops+One&family=Rubik+Glitch&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0c0c0e; color: #ddd; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
@@ -201,12 +200,18 @@
 
 <script>
 const PRESETS = [
-  { id:"dark-trap", label:"Dark Trap", bg:"linear-gradient(135deg,#0a0a0a 0%,#1a0a1a 40%,#0d0d2b 100%)", accent:"#ff003c", textColor:"#ffffff", overlay:"grain" },
-  { id:"lofi-chill", label:"Lo-Fi Chill", bg:"linear-gradient(180deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)", accent:"#e94560", textColor:"#eaeaea", overlay:"vignette" },
-  { id:"neon-street", label:"Neon Street", bg:"linear-gradient(160deg,#0d0d0d 0%,#1a002a 60%,#0d0d0d 100%)", accent:"#00ff88", textColor:"#ffffff", overlay:"scanlines" },
-  { id:"vintage-boom", label:"Vintage Boom Bap", bg:"linear-gradient(145deg,#1c1410 0%,#2a1f14 50%,#0f0a06 100%)", accent:"#d4a05a", textColor:"#f0e6d3", overlay:"grain" },
-  { id:"phonk", label:"Phonk", bg:"linear-gradient(135deg,#0a0000 0%,#1a0005 40%,#200010 100%)", accent:"#ff0040", textColor:"#ff8888", overlay:"scanlines" },
-  { id:"cloud-rap", label:"Cloud Rap", bg:"linear-gradient(180deg,#0e0e1a 0%,#1a1a3e 40%,#2a1a4e 100%)", accent:"#b388ff", textColor:"#e8dfff", overlay:"vignette" },
+  { id:"dark-trap", label:"Dark Trap", bg:"linear-gradient(135deg,#0a0a0a 0%,#1a0a1a 40%,#0d0d2b 100%)", accent:"#ff003c", textColor:"#ffffff", overlay:"grain",
+    stops:[{c:"#0a0a0a",p:0},{c:"#1a0a1a",p:0.4},{c:"#0d0d2b",p:1}], angle:135 },
+  { id:"lofi-chill", label:"Lo-Fi Chill", bg:"linear-gradient(180deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)", accent:"#e94560", textColor:"#eaeaea", overlay:"vignette",
+    stops:[{c:"#1a1a2e",p:0},{c:"#16213e",p:0.5},{c:"#0f3460",p:1}], angle:180 },
+  { id:"neon-street", label:"Neon Street", bg:"linear-gradient(160deg,#0d0d0d 0%,#1a002a 60%,#0d0d0d 100%)", accent:"#00ff88", textColor:"#ffffff", overlay:"scanlines",
+    stops:[{c:"#0d0d0d",p:0},{c:"#1a002a",p:0.6},{c:"#0d0d0d",p:1}], angle:160 },
+  { id:"vintage-boom", label:"Vintage Boom Bap", bg:"linear-gradient(145deg,#1c1410 0%,#2a1f14 50%,#0f0a06 100%)", accent:"#d4a05a", textColor:"#f0e6d3", overlay:"grain",
+    stops:[{c:"#1c1410",p:0},{c:"#2a1f14",p:0.5},{c:"#0f0a06",p:1}], angle:145 },
+  { id:"phonk", label:"Phonk", bg:"linear-gradient(135deg,#0a0000 0%,#1a0005 40%,#200010 100%)", accent:"#ff0040", textColor:"#ff8888", overlay:"scanlines",
+    stops:[{c:"#0a0000",p:0},{c:"#1a0005",p:0.4},{c:"#200010",p:1}], angle:135 },
+  { id:"cloud-rap", label:"Cloud Rap", bg:"linear-gradient(180deg,#0e0e1a 0%,#1a1a3e 40%,#2a1a4e 100%)", accent:"#b388ff", textColor:"#e8dfff", overlay:"vignette",
+    stops:[{c:"#0e0e1a",p:0},{c:"#1a1a3e",p:0.4},{c:"#2a1a4e",p:1}], angle:180 },
 ];
 const FONTS = [
   { id:"impact", label:"Impact", family:"Impact, sans-serif" },
@@ -470,14 +475,212 @@ document.getElementById('imageUpload').addEventListener('change', handleUpload);
 document.getElementById('removeImg').onclick = () => { state.uploadedImage = null; render(); };
 
 document.getElementById('exportBtn').onclick = async () => {
-  const el = document.getElementById('thumbnail-preview');
-  const canvas = await html2canvas(el, { width:1280, height:720, scale:1, useCORS:true, backgroundColor:null });
+  const W = 1280, H = 720;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const preset = getPreset();
+  const font = getFont();
+  const accent = getAccent();
+  const artist = document.getElementById('artistName').value || 'Artist';
+  const beat = document.getElementById('beatName').value || 'Beat Name';
+  const producer = document.getElementById('producerName').value;
+  const bpm = document.getElementById('bpm').value || '140';
+  const key = document.getElementById('musicalKey').value || 'Cm';
+  const tag = document.getElementById('tagText').value || 'FREE';
+  const layout = state.layout;
+
+  /* --- Background gradient --- */
+  const angle = (preset.angle || 135) * Math.PI / 180;
+  const cx = W/2, cy = H/2;
+  const diagLen = Math.sqrt(W*W + H*H) / 2;
+  const x0 = cx - Math.cos(angle) * diagLen;
+  const y0 = cy - Math.sin(angle) * diagLen;
+  const x1 = cx + Math.cos(angle) * diagLen;
+  const y1 = cy + Math.sin(angle) * diagLen;
+  const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+  (preset.stops || []).forEach(s => grad.addColorStop(s.p, s.c));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  /* --- Background image --- */
+  if (state.uploadedImage) {
+    try {
+      const img = await loadImage(state.uploadedImage);
+      ctx.globalAlpha = 0.35;
+      const scale = Math.max(W / img.width, H / img.height);
+      const iw = img.width * scale, ih = img.height * scale;
+      ctx.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      ctx.globalAlpha = 1;
+    } catch(e) {}
+  }
+
+  /* --- Overlay effects --- */
+  if (preset.overlay === 'vignette') {
+    const vg = ctx.createRadialGradient(W/2, H/2, W*0.2, W/2, H/2, W*0.7);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.6)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (preset.overlay === 'scanlines') {
+    ctx.fillStyle = 'rgba(255,255,255,0.015)';
+    for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+  }
+
+  /* --- Tag badge (top right) --- */
+  if (state.showTag) {
+    ctx.font = '700 18px sans-serif';
+    const tw = ctx.measureText(tag.toUpperCase()).width + 20;
+    const tx = W - 24 - tw, ty = 20;
+    ctx.fillStyle = accent;
+    roundRect(ctx, tx, ty, tw, 28, 4);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tag.toUpperCase(), tx + tw/2, ty + 14);
+  }
+
+  /* --- Main text positioning by layout --- */
+  const artistText = (artist + ' Type Beat').toUpperCase();
+  const beatText = beat.toUpperCase();
+  const artistSize = { centered:42, 'bottom-left':32, 'top-split':38, diagonal:34 }[layout] || 42;
+  const beatSize = { centered:72, 'bottom-left':64, 'top-split':68, diagonal:68 }[layout] || 72;
+
+  let artistX, artistY, beatX, beatY, tAlign;
+
+  if (layout === 'centered') {
+    tAlign = 'center'; artistX = W/2; beatX = W/2;
+    artistY = H/2 - beatSize/2 - 8;
+    beatY = H/2 + artistSize/2;
+  } else if (layout === 'bottom-left') {
+    tAlign = 'left'; artistX = 44; beatX = 44;
+    const bottom = state.showBpm || state.showKey || producer ? 90 : 50;
+    beatY = H - bottom;
+    artistY = beatY - beatSize - 4;
+  } else if (layout === 'top-split') {
+    tAlign = 'center'; artistX = W/2; beatX = W/2;
+    artistY = 70;
+    beatY = H - (state.showBpm || state.showKey || producer ? 90 : 50);
+  } else if (layout === 'diagonal') {
+    tAlign = 'left'; artistX = 60; beatX = 60;
+    artistY = H/2 - beatSize/2 - 8;
+    beatY = H/2 + artistSize/2;
+    ctx.save();
+    ctx.translate(W/2, H/2);
+    ctx.rotate(-3 * Math.PI / 180);
+    ctx.translate(-W/2, -H/2);
+  }
+
+  ctx.textAlign = tAlign;
+  ctx.textBaseline = 'middle';
+
+  /* Artist name */
+  ctx.font = `700 ${artistSize}px ${font.family}`;
+  ctx.fillStyle = preset.textColor + 'bb';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(artistText, artistX, artistY);
+
+  /* Beat name */
+  ctx.font = `700 ${beatSize}px ${font.family}`;
+  ctx.fillStyle = preset.textColor;
+  ctx.shadowColor = accent + '44';
+  ctx.shadowBlur = 40;
+  ctx.fillText(beatText, beatX, beatY);
+  ctx.shadowBlur = 0;
+  ctx.letterSpacing = '0px';
+
+  if (layout === 'diagonal') ctx.restore();
+
+  /* --- Bottom bar: Prod.by (left) + BPM/KEY badges (right) --- */
+  const bottomY = H - 28;
+
+  if (producer) {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = '400 18px Courier New, monospace';
+    ctx.fillStyle = preset.textColor + '66';
+    const prodByW = ctx.measureText('Prod.by ').width;
+    ctx.fillText('Prod.by ', 28, bottomY);
+    ctx.fillStyle = accent;
+    ctx.font = '700 18px Courier New, monospace';
+    ctx.fillText(producer, 28 + prodByW, bottomY);
+  }
+
+  if (state.showBpm || state.showKey) {
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 20px Courier New, monospace';
+    let rx = W - 28;
+    if (state.showKey) {
+      const keyStr = 'KEY ' + key;
+      const kw = ctx.measureText(keyStr).width + 20;
+      ctx.fillStyle = accent + '22';
+      roundRect(ctx, rx - kw, bottomY - 14, kw, 28, 4);
+      ctx.fill();
+      ctx.strokeStyle = accent + '55';
+      ctx.lineWidth = 1;
+      roundRect(ctx, rx - kw, bottomY - 14, kw, 28, 4);
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.fillText(keyStr, rx - 10, bottomY);
+      rx -= kw + 10;
+    }
+    if (state.showBpm) {
+      const bpmStr = 'BPM ' + bpm;
+      const bw = ctx.measureText(bpmStr).width + 20;
+      ctx.fillStyle = accent + '22';
+      roundRect(ctx, rx - bw, bottomY - 14, bw, 28, 4);
+      ctx.fill();
+      ctx.strokeStyle = accent + '55';
+      ctx.lineWidth = 1;
+      roundRect(ctx, rx - bw, bottomY - 14, bw, 28, 4);
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.fillText(bpmStr, rx - 10, bottomY);
+    }
+  }
+
+  /* --- Accent line at bottom --- */
+  const lineGrad = ctx.createLinearGradient(0, 0, W, 0);
+  lineGrad.addColorStop(0, 'transparent');
+  lineGrad.addColorStop(0.5, accent);
+  lineGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = lineGrad;
+  ctx.fillRect(0, H - 3, W, 3);
+
+  /* --- Download --- */
   const a = document.createElement('a');
-  const beat = document.getElementById('beatName').value || 'beat';
-  a.download = beat + '_thumbnail.png';
+  a.download = (document.getElementById('beatName').value || 'beat') + '_thumbnail.png';
   a.href = canvas.toDataURL('image/png');
   a.click();
 };
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
 
 /* --- Init --- */
 buildExampleBtns();
