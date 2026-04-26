@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beat Thumbnail Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Bebas+Neue&family=Anton&family=Black+Ops+One&family=Rubik+Glitch&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0c0c0e; color: #ddd; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+  input:focus { border-color: var(--accent) !important; outline: none; }
+  input::placeholder { color: #444; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .header { padding: 24px 28px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 14px; }
+  .header-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #000; }
+  .header-title { font-size: 16px; font-weight: 700; letter-spacing: 0.02em; }
+  .header-sub { font-size: 11px; color: #555; margin-top: 1px; }
+
+  .app-grid { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 77px); }
+  .controls { padding: 20px 24px; border-right: 1px solid rgba(255,255,255,0.06); overflow-y: auto; max-height: calc(100vh - 77px); display: flex; flex-direction: column; gap: 24px; }
+  .preview-panel { padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: rgba(255,255,255,0.01); }
+
+  .section { display: flex; flex-direction: column; gap: 12px; }
+  .section-title { font-size: 13px; font-weight: 700; color: #aaa; display: flex; align-items: center; gap: 6px; }
+  .section-bar { display: inline-block; width: 3px; height: 14px; border-radius: 2px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; font-weight: 600; margin-bottom: 4px; display: block; }
+  .input { width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #eee; font-size: 14px; font-family: inherit; transition: border-color 0.2s; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .chip { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: #777; font-family: inherit; }
+  .chip.active { border-color: var(--accent-44); color: var(--accent); background: var(--accent-22); }
+  .chip-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+  .toggle-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .toggle-track { width: 36px; height: 20px; border-radius: 10px; position: relative; transition: background 0.2s; cursor: pointer; }
+  .toggle-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; transition: left 0.2s; }
+  .toggle-label { font-size: 13px; color: #aaa; }
+
+  .color-pick { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .color-swatch { width: 28px; height: 28px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.15); position: relative; overflow: hidden; }
+  .color-swatch input { position: absolute; inset: -4px; width: 36px; height: 36px; cursor: pointer; opacity: 0; }
+  .color-label { font-size: 12px; color: #999; }
+
+  .upload-area { display: flex; align-items: center; justify-content: center; padding: 14px; border: 1px dashed rgba(255,255,255,0.12); border-radius: 8px; cursor: pointer; font-size: 13px; color: #555; transition: border-color 0.2s; }
+  .upload-area:hover { border-color: rgba(255,255,255,0.25); }
+  .remove-img { background: none; border: none; color: #555; font-size: 12px; cursor: pointer; text-decoration: underline; }
+
+  .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .preview-label { font-size: 11px; color: #444; letter-spacing: 0.1em; text-transform: uppercase; }
+  .export-btn { border: none; border-radius: 6px; padding: 8px 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; color: #000; transition: transform 0.15s, opacity 0.15s; }
+  .export-btn:hover { opacity: 0.85; transform: scale(1.02); }
+
+  .preset-btns { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .preset-btns .chip { font-size: 11px; }
+
+  /* Thumbnail */
+  .thumb { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+  .thumb-bg-img { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0.35; filter: blur(1px); }
+  .overlay { position: absolute; inset: 0; pointer-events: none; }
+  .grain { opacity: 0.06; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 128px 128px; }
+  .scanlines { opacity: 0.08; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px); }
+  .vignette { background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%); }
+
+  .thumb-tag { position: absolute; top: 12px; right: 12px; z-index: 3; font-weight: 900; padding: 3px 10px; border-radius: 3px; font-family: sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #000; }
+  .thumb-main { position: absolute; inset: 0; z-index: 2; }
+  .thumb-main-inner { height: 100%; display: flex; flex-direction: column; gap: 4px; }
+  .thumb-artist { text-transform: uppercase; letter-spacing: 0.15em; line-height: 1.1; }
+  .thumb-beat { text-transform: uppercase; letter-spacing: 0.05em; line-height: 0.95; }
+  .thumb-bottom { position: absolute; bottom: 10px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; z-index: 3; }
+  .thumb-producer { font-family: 'Courier New', monospace; letter-spacing: 0.08em; text-shadow: 0 1px 4px rgba(0,0,0,0.6); display: flex; align-items: center; gap: 4px; }
+  .thumb-badges { display: flex; gap: 6px; flex-shrink: 0; }
+  .meta-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 3px 10px; font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.05em; }
+  .thumb-accent-line { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; z-index: 4; }
+
+  @media (max-width: 800px) {
+    .app-grid { grid-template-columns: 1fr; }
+    .controls { max-height: none; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .preview-panel { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon" id="headerIcon">B</div>
+  <div>
+    <div class="header-title">Beat Thumbnail Generator</div>
+    <div class="header-sub">ヒップホップ系ビートのサムネイルを即座に生成</div>
+  </div>
+</div>
+
+<div class="app-grid">
+  <!-- Controls -->
+  <div class="controls">
+    <div class="section">
+      <div class="section-title"><span class="section-bar" id="bar1"></span>テキスト設定</div>
+      <div><label class="label">アーティスト名</label><input class="input" id="artistName" placeholder="例: Travis Scott" value="Travis Scott"></div>
+      <div><label class="label">ビート名</label><input class="input" id="beatName" placeholder="例: MIDNIGHT" value="MIDNIGHT"></div>
+      <div><label class="label">プロデューサー名（Prod.by）</label><input class="input" id="producerName" placeholder="例: your name" value=""></div>
+      <div class="row-2">
+        <div><label class="label">BPM</label><input class="input" id="bpm" placeholder="140" value="140"></div>
+        <div><label class="label">KEY</label><input class="input" id="musicalKey" placeholder="Cm" value="Cm"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-bar" id="bar2"></span>スタイル</div>
+      <div class="chips" id="presetChips"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-bar" id="bar3"></span>フォント</div>
+      <div class="chips" id="fontChips"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-bar" id="bar4"></span>レイアウト</div>
+      <div class="chips" id="layoutChips"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-bar" id="bar5"></span>表示オプション</div>
+      <div class="toggle-row" id="toggleBpm"><div class="toggle-track" id="trackBpm"><div class="toggle-thumb" id="thumbBpm"></div></div><span class="toggle-label">BPMを表示</span></div>
+      <div class="toggle-row" id="toggleKey"><div class="toggle-track" id="trackKey"><div class="toggle-thumb" id="thumbKey"></div></div><span class="toggle-label">KEYを表示</span></div>
+      <div class="toggle-row" id="toggleTag"><div class="toggle-track" id="trackTag"><div class="toggle-thumb" id="thumbTag"></div></div><span class="toggle-label">タグを表示</span></div>
+      <div id="tagTextWrap"><label class="label">タグテキスト</label><input class="input" id="tagText" placeholder="FREE / SOLD / NEW" value="FREE"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-bar" id="bar6"></span>カスタムカラー</div>
+      <label class="color-pick"><div class="color-swatch" id="colorSwatch"><input type="color" id="accentColor" value="#ff003c"></div><span class="color-label">アクセントカラー</span></label>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-bar" id="bar7"></span>背景画像（任意）</div>
+      <label class="upload-area" id="uploadLabel">クリックして画像をアップロード<input type="file" accept="image/*" id="imageUpload" style="display:none"></label>
+      <button class="remove-img" id="removeImg" style="display:none">画像を削除</button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-panel">
+    <div style="width:100%;max-width:720px">
+      <div class="preview-header">
+        <span class="preview-label">プレビュー — 1280 × 720px</span>
+        <button class="export-btn" id="exportBtn">PNG で書き出し</button>
+      </div>
+
+      <div id="thumbnail-preview" style="animation:fadeIn 0.4s ease">
+        <div class="thumb" id="thumbRoot">
+          <div class="thumb-bg-img" id="thumbBgImg" style="display:none"></div>
+          <div class="overlay" id="overlayEl"></div>
+          <div class="thumb-tag" id="thumbTagEl">FREE</div>
+          <div class="thumb-main" id="thumbMainArea">
+            <div class="thumb-main-inner" id="thumbMainInner">
+              <div class="thumb-artist" id="thumbArtist">TRAVIS SCOTT Type Beat</div>
+              <div class="thumb-beat" id="thumbBeat">MIDNIGHT</div>
+            </div>
+          </div>
+          <div class="thumb-bottom" id="thumbBottom">
+            <div class="thumb-producer" id="thumbProducer"></div>
+            <div class="thumb-badges" id="thumbBadges"></div>
+          </div>
+          <div class="thumb-accent-line" id="thumbLine"></div>
+        </div>
+      </div>
+
+      <div class="preset-btns" id="presetBtns"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRESETS = [
+  { id:"dark-trap", label:"Dark Trap", bg:"linear-gradient(135deg,#0a0a0a 0%,#1a0a1a 40%,#0d0d2b 100%)", accent:"#ff003c", textColor:"#ffffff", overlay:"grain" },
+  { id:"lofi-chill", label:"Lo-Fi Chill", bg:"linear-gradient(180deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)", accent:"#e94560", textColor:"#eaeaea", overlay:"vignette" },
+  { id:"neon-street", label:"Neon Street", bg:"linear-gradient(160deg,#0d0d0d 0%,#1a002a 60%,#0d0d0d 100%)", accent:"#00ff88", textColor:"#ffffff", overlay:"scanlines" },
+  { id:"vintage-boom", label:"Vintage Boom Bap", bg:"linear-gradient(145deg,#1c1410 0%,#2a1f14 50%,#0f0a06 100%)", accent:"#d4a05a", textColor:"#f0e6d3", overlay:"grain" },
+  { id:"phonk", label:"Phonk", bg:"linear-gradient(135deg,#0a0000 0%,#1a0005 40%,#200010 100%)", accent:"#ff0040", textColor:"#ff8888", overlay:"scanlines" },
+  { id:"cloud-rap", label:"Cloud Rap", bg:"linear-gradient(180deg,#0e0e1a 0%,#1a1a3e 40%,#2a1a4e 100%)", accent:"#b388ff", textColor:"#e8dfff", overlay:"vignette" },
+];
+const FONTS = [
+  { id:"impact", label:"Impact", family:"Impact, sans-serif" },
+  { id:"oswald", label:"Oswald", family:"'Oswald', sans-serif" },
+  { id:"bebas", label:"Bebas Neue", family:"'Bebas Neue', sans-serif" },
+  { id:"anton", label:"Anton", family:"'Anton', sans-serif" },
+  { id:"blackops", label:"Black Ops One", family:"'Black Ops One', sans-serif" },
+  { id:"rubikglitch", label:"Rubik Glitch", family:"'Rubik Glitch', sans-serif" },
+];
+const LAYOUTS = [
+  { id:"centered", label:"中央配置" },
+  { id:"bottom-left", label:"左下配置" },
+  { id:"top-split", label:"上下分割" },
+  { id:"diagonal", label:"斜め配置" },
+];
+const LAYOUT_SIZES = {
+  centered:     { artist:"clamp(16px,4.5vw,42px)", beat:"clamp(28px,8vw,72px)" },
+  "bottom-left":{ artist:"clamp(14px,3.5vw,32px)", beat:"clamp(24px,7vw,64px)" },
+  "top-split":  { artist:"clamp(16px,4vw,38px)",   beat:"clamp(26px,7.5vw,68px)" },
+  diagonal:     { artist:"clamp(14px,3.8vw,34px)", beat:"clamp(26px,7.5vw,68px)" },
+};
+const EXAMPLES = [
+  { artist:"Travis Scott", beat:"MIDNIGHT", preset:"dark-trap", bpm:"140", key:"Cm" },
+  { artist:"Drake", beat:"EMOTIONS", preset:"lofi-chill", bpm:"130", key:"Dm" },
+  { artist:"Playboi Carti", beat:"OPIUM", preset:"neon-street", bpm:"150", key:"F#m" },
+  { artist:"J. Cole", beat:"NOSTALGIA", preset:"vintage-boom", bpm:"90", key:"Eb" },
+  { artist:"Yeat", beat:"TURBO", preset:"phonk", bpm:"160", key:"Am" },
+];
+
+let state = {
+  preset: "dark-trap", font: "bebas", layout: "centered",
+  showBpm: true, showKey: true, showTag: true,
+  accentOverride: "", uploadedImage: null,
+};
+
+function getAccent() {
+  const p = PRESETS.find(x => x.id === state.preset) || PRESETS[0];
+  return state.accentOverride || p.accent;
+}
+function getPreset() { return PRESETS.find(x => x.id === state.preset) || PRESETS[0]; }
+function getFont() { return FONTS.find(x => x.id === state.font) || FONTS[0]; }
+
+/* --- Chip builders --- */
+function buildPresetChips() {
+  const el = document.getElementById('presetChips');
+  el.innerHTML = '';
+  PRESETS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (state.preset === p.id ? ' active' : '');
+    btn.innerHTML = `<span class="chip-dot" style="background:${p.accent}"></span>${p.label}`;
+    btn.style.cssText = state.preset === p.id ? `background:${p.accent}22;color:${p.accent};border-color:${p.accent}44` : '';
+    btn.onclick = () => { state.preset = p.id; render(); };
+    el.appendChild(btn);
+  });
+}
+function buildFontChips() {
+  const el = document.getElementById('fontChips');
+  const accent = getAccent();
+  el.innerHTML = '';
+  FONTS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (state.font === f.id ? ' active' : '');
+    btn.textContent = f.label;
+    btn.style.fontFamily = f.family;
+    btn.style.fontSize = '14px';
+    if (state.font === f.id) btn.style.cssText += `background:${accent}22;color:${accent};border-color:${accent}44;font-family:${f.family};font-size:14px`;
+    btn.onclick = () => { state.font = f.id; render(); };
+    el.appendChild(btn);
+  });
+}
+function buildLayoutChips() {
+  const el = document.getElementById('layoutChips');
+  const accent = getAccent();
+  el.innerHTML = '';
+  LAYOUTS.forEach(l => {
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (state.layout === l.id ? ' active' : '');
+    btn.textContent = l.label;
+    if (state.layout === l.id) btn.style.cssText = `background:${accent}22;color:${accent};border-color:${accent}44`;
+    btn.onclick = () => { state.layout = l.id; render(); };
+    el.appendChild(btn);
+  });
+}
+function buildExampleBtns() {
+  const el = document.getElementById('presetBtns');
+  el.innerHTML = '';
+  EXAMPLES.forEach(ex => {
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.style.fontSize = '11px';
+    btn.textContent = `${ex.artist} — ${ex.beat}`;
+    btn.onclick = () => {
+      document.getElementById('artistName').value = ex.artist;
+      document.getElementById('beatName').value = ex.beat;
+      document.getElementById('bpm').value = ex.bpm;
+      document.getElementById('musicalKey').value = ex.key;
+      state.preset = ex.preset;
+      state.accentOverride = '';
+      render();
+    };
+    el.appendChild(btn);
+  });
+}
+
+/* --- Render thumbnail --- */
+function render() {
+  const accent = getAccent();
+  const preset = getPreset();
+  const font = getFont();
+  const sizes = LAYOUT_SIZES[state.layout] || LAYOUT_SIZES.centered;
+  const artist = document.getElementById('artistName').value || 'Artist';
+  const beat = document.getElementById('beatName').value || 'Beat Name';
+  const producer = document.getElementById('producerName').value;
+  const bpm = document.getElementById('bpm').value || '140';
+  const key = document.getElementById('musicalKey').value || 'Cm';
+  const tag = document.getElementById('tagText').value || 'FREE';
+
+  // CSS var
+  document.documentElement.style.setProperty('--accent', accent);
+  document.documentElement.style.setProperty('--accent-22', accent + '22');
+  document.documentElement.style.setProperty('--accent-44', accent + '44');
+
+  // Header icon
+  document.getElementById('headerIcon').style.background = `linear-gradient(135deg,${accent},${accent}88)`;
+  // Section bars
+  document.querySelectorAll('.section-bar').forEach(b => b.style.background = accent);
+  // Export btn
+  document.getElementById('exportBtn').style.background = accent;
+
+  // Thumb root bg
+  const thumbRoot = document.getElementById('thumbRoot');
+  thumbRoot.style.background = preset.bg;
+
+  // Background image
+  const bgImg = document.getElementById('thumbBgImg');
+  if (state.uploadedImage) { bgImg.style.display = 'block'; bgImg.style.backgroundImage = `url(${state.uploadedImage})`; }
+  else { bgImg.style.display = 'none'; }
+
+  // Overlay
+  const ov = document.getElementById('overlayEl');
+  ov.className = 'overlay ' + preset.overlay;
+
+  // Tag
+  const tagEl = document.getElementById('thumbTagEl');
+  tagEl.style.display = state.showTag ? 'block' : 'none';
+  tagEl.style.background = accent;
+  tagEl.style.fontSize = 'clamp(8px,1.8vw,13px)';
+  tagEl.textContent = tag;
+
+  // Main text area
+  const mainArea = document.getElementById('thumbMainArea');
+  const hasBottom = producer || state.showBpm || state.showKey;
+  mainArea.style.padding = hasBottom ? '16px 16px 48px 16px' : '16px';
+
+  const inner = document.getElementById('thumbMainInner');
+  const layoutMap = {
+    centered:     { justify:'center', align:'center', ta:'center', pad:'', transform:'' },
+    "bottom-left":{ justify:'flex-end', align:'flex-start', ta:'left', pad:'0 0 8px 12px', transform:'' },
+    "top-split":  { justify:'space-between', align:'center', ta:'center', pad:'8px 0', transform:'' },
+    diagonal:     { justify:'center', align:'flex-start', ta:'left', pad:'0 0 0 16px', transform:'rotate(-3deg)' },
+  };
+  const lm = layoutMap[state.layout] || layoutMap.centered;
+  inner.style.justifyContent = lm.justify;
+  inner.style.alignItems = lm.align;
+  inner.style.textAlign = lm.ta;
+  inner.style.padding = lm.pad;
+  inner.style.transform = lm.transform;
+
+  // Artist text
+  const artistEl = document.getElementById('thumbArtist');
+  artistEl.style.fontSize = sizes.artist;
+  artistEl.style.fontFamily = font.family;
+  artistEl.style.color = preset.textColor + 'bb';
+  artistEl.textContent = artist + ' Type Beat';
+
+  // Beat text
+  const beatEl = document.getElementById('thumbBeat');
+  beatEl.style.fontSize = sizes.beat;
+  beatEl.style.fontFamily = font.family;
+  beatEl.style.color = preset.textColor;
+  beatEl.style.textShadow = `0 0 40px ${accent}44`;
+  beatEl.style.webkitTextStroke = `1px ${accent}33`;
+  beatEl.textContent = beat;
+
+  // Bottom bar
+  const bottom = document.getElementById('thumbBottom');
+  bottom.style.display = hasBottom ? 'flex' : 'none';
+
+  // Producer
+  const prodEl = document.getElementById('thumbProducer');
+  prodEl.style.fontSize = 'clamp(9px,2vw,14px)';
+  prodEl.style.color = preset.textColor + '88';
+  if (producer) {
+    prodEl.innerHTML = `<span style="opacity:0.5">Prod.by</span> <span style="color:${accent};font-weight:700">${escHtml(producer)}</span>`;
+  } else {
+    prodEl.innerHTML = '';
+  }
+
+  // Badges
+  const badges = document.getElementById('thumbBadges');
+  let bhtml = '';
+  const badgeStyle = `background:${accent}22;border:1px solid ${accent}55;color:${accent};font-size:clamp(10px,2.2vw,16px)`;
+  if (state.showBpm) bhtml += `<span class="meta-badge" style="${badgeStyle}">BPM ${escHtml(bpm)}</span>`;
+  if (state.showKey) bhtml += `<span class="meta-badge" style="${badgeStyle}">KEY ${escHtml(key)}</span>`;
+  badges.innerHTML = bhtml;
+
+  // Accent line
+  document.getElementById('thumbLine').style.background = `linear-gradient(90deg,transparent,${accent},transparent)`;
+
+  // Toggles visual
+  ['Bpm','Key','Tag'].forEach(t => {
+    const on = state['show'+t];
+    document.getElementById('track'+t).style.background = on ? accent : 'rgba(255,255,255,0.1)';
+    document.getElementById('thumb'+t.charAt(0).toUpperCase()+t.slice(1) || '').style;
+    document.getElementById('thumb'+t).style.left = on ? '18px' : '2px';
+  });
+  document.getElementById('tagTextWrap').style.display = state.showTag ? 'block' : 'none';
+
+  // Color swatch
+  document.getElementById('colorSwatch').style.background = accent;
+  document.getElementById('accentColor').value = accent;
+
+  // Upload label
+  document.getElementById('uploadLabel').textContent = state.uploadedImage ? '画像を変更' : 'クリックして画像をアップロード';
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
+  fileInput.onchange = handleUpload;
+  document.getElementById('uploadLabel').appendChild(fileInput);
+  document.getElementById('removeImg').style.display = state.uploadedImage ? 'inline-block' : 'none';
+
+  // Rebuild chips
+  buildPresetChips();
+  buildFontChips();
+  buildLayoutChips();
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* --- Events --- */
+['artistName','beatName','producerName','bpm','musicalKey','tagText'].forEach(id => {
+  document.getElementById(id).addEventListener('input', render);
+});
+
+document.getElementById('toggleBpm').onclick = () => { state.showBpm = !state.showBpm; render(); };
+document.getElementById('toggleKey').onclick = () => { state.showKey = !state.showKey; render(); };
+document.getElementById('toggleTag').onclick = () => { state.showTag = !state.showTag; render(); };
+
+document.getElementById('accentColor').addEventListener('input', e => {
+  state.accentOverride = e.target.value;
+  render();
+});
+
+function handleUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { state.uploadedImage = ev.target.result; render(); };
+  reader.readAsDataURL(file);
+}
+document.getElementById('imageUpload').addEventListener('change', handleUpload);
+document.getElementById('removeImg').onclick = () => { state.uploadedImage = null; render(); };
+
+document.getElementById('exportBtn').onclick = async () => {
+  const el = document.getElementById('thumbnail-preview');
+  const canvas = await html2canvas(el, { width:1280, height:720, scale:1, useCORS:true, backgroundColor:null });
+  const a = document.createElement('a');
+  const beat = document.getElementById('beatName').value || 'beat';
+  a.download = beat + '_thumbnail.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+};
+
+/* --- Init --- */
+buildExampleBtns();
+render();
+</script>
+</body>
+</html>
